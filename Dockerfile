@@ -1,3 +1,3 @@
 FROM nvcr.io/nvidia/modulus/modulus:23.05
 
-CMD []
+CMD echo "Hello World!"
