@@ -7,7 +7,7 @@ Motivation: Modulus' container has `CMD` set to `null` istead of empty list `[]`
 ### Building the Dockerfile
 
 ```
-docker build -t dimensionlab/modulus-mlhub:23.05 -f Dockerfile .
+docker build -t dimensionlab/modulus-mlhub:24.01 -f Dockerfile .
 ```
 
 ### Using the container
