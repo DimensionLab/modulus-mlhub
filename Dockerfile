@@ -217,6 +217,8 @@ RUN \
 
 ### RUNTIMES ###
 
+ENV PYTHONPATH=/usr/local/lib/python3.10
+
 # Install pyenv to allow dynamic creation of python versions
 RUN git clone https://github.com/pyenv/pyenv.git $RESOURCES_PATH/.pyenv && \
     # Install pyenv plugins based on pyenv installer
@@ -622,30 +624,6 @@ RUN \
 
 ### END VSCODE ###
 
-
-
-RUN \
-    apt-get update && \
-    chmod -R a+rwx /usr/local/bin/ && \
-    # Fix permissions
-    fix-permissions.sh $HOME && \
-    # Cleanup
-    clean-layer.sh
-
-ENV PATH=$CONDA_ROOT/bin:$PATH
-ENV PATH=$HOME/.local/bin:$PATH
-
-# Add the defaults from /lib/x86_64-linux-gnu, otherwise lots of no version errors
-# cannot be added above otherwise there are errors in the installation of the gui tools
-# Call order: https://unix.stackexchange.com/questions/367600/what-is-the-order-that-linuxs-dynamic-linker-searches-paths-in
-ENV LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:$CONDA_ROOT/lib:$LD_LIBRARY_PATH
-
-# By default, the majority of GPU memory will be allocated by the first
-# execution of a TensorFlow graph. While this behavior can be desirable for
-# production pipelines, it is less desirable for interactive use. Set
-# TF_FORCE_GPU_ALLOW_GROWTH to change this default behavior as if the user had
-ENV TF_FORCE_GPU_ALLOW_GROWTH true
-
 ### CONFIGURATION ###
 
 # Copy files into workspace
@@ -691,7 +669,7 @@ ENV \
     VNC_COL_DEPTH=24
 
 # Add tensorboard patch - use tensorboard jupyter plugin instead of the actual tensorboard magic
-COPY ml-workspace/resources/jupyter/tensorboard_notebook_patch.py $CONDA_PYTHON_DIR/site-packages/tensorboard/notebook.py
+COPY ml-workspace/resources/jupyter/tensorboard_notebook_patch.py PYTHONPATH/dist-packages/tensorboard/notebook.py
 
 # Additional jupyter configuration
 COPY ml-workspace/resources/jupyter/jupyter_notebook_config.py /etc/jupyter/
@@ -702,9 +680,9 @@ COPY ml-workspace/resources/jupyter/ipython_config.py /etc/ipython/ipython_confi
 # Branding of various components
 RUN \
     # Jupyter Branding
-    # cp -f $RESOURCES_PATH/branding/logo.png $CONDA_PYTHON_DIR"/dist-packages/notebook/static/base/images/logo.png" && \
-    # cp -f $RESOURCES_PATH/branding/favicon.ico $CONDA_PYTHON_DIR"/dist-packages/notebook/static/base/images/favicon.ico" && \
-    # cp -f $RESOURCES_PATH/branding/favicon.ico $CONDA_PYTHON_DIR"/dist-packages/notebook/static/favicon.ico" && \
+    cp -f $RESOURCES_PATH/branding/logo.png PYTHONPATH"/dist-packages/notebook/static/base/images/logo.png" && \
+    cp -f $RESOURCES_PATH/branding/favicon.ico PYTHONPATH"/dist-packages/notebook/static/base/images/favicon.ico" && \
+    cp -f $RESOURCES_PATH/branding/favicon.ico PYTHONPATH"/dist-packages/notebook/static/favicon.ico" && \
     # Fielbrowser Branding
     mkdir -p $RESOURCES_PATH"/filebrowser/img/icons/" && \
     cp -f $RESOURCES_PATH/branding/favicon.ico $RESOURCES_PATH"/filebrowser/img/icons/favicon.ico" && \
@@ -728,7 +706,7 @@ RUN \
     # Import matplotlib the first time to build the font cache.
     MPLBACKEND=Agg /usr/bin/python -c "import matplotlib.pyplot" \
     # Stop Matplotlib printing junk to the console on first load
-    sed -i "s/^.*Matplotlib is building the font cache using fc-list.*$/# Warning removed/g" $CONDA_PYTHON_DIR/site-packages/matplotlib/font_manager.py
+    sed -i "s/^.*Matplotlib is building the font cache using fc-list.*$/# Warning removed/g" PYTHONPATH/dist-packages/matplotlib/font_manager.py
 
 # Create Desktop Icons for Tooling
 COPY ml-workspace/resources/icons $RESOURCES_PATH/icons
@@ -754,31 +732,6 @@ COPY ml-workspace/resources/tutorials $RESOURCES_PATH/tutorials
 COPY ml-workspace/resources/licenses $RESOURCES_PATH/licenses
 COPY ml-workspace/resources/reports $RESOURCES_PATH/reports
 
-# Add pyenv to path
-ENV PATH=$RESOURCES_PATH/.pyenv/shims:$RESOURCES_PATH/.pyenv/bin:$PATH \
-    PYENV_ROOT=$RESOURCES_PATH/.pyenv
-
-COPY --from=builder /usr/local/nvm /usr/local/nvm
-
-# Fix conda version
-RUN \
-    # Conda installs wrong node version - relink conda node to the actual node
-    rm -f /opt/conda/bin/node && ln -s /usr/local/nvm/versions/node/v16.20.2/bin/node /opt/conda/bin/node && \
-    rm -f /opt/conda/bin/npm && ln -s /usr/local/nvm/versions/node/v16.20.2/bin/npm /opt/conda/bin/npm && \
-    # symlink also to /usr/local/bin
-    ln -s /usr/local/nvm/versions/node/v16.20.2/bin/node && \
-    ln -s /usr/local/nvm/versions/node/v16.20.2/bin/npm && \
-    # Fix permissions
-    chmod a+rwx /usr/local/nvm/versions/node/v16.20.2/bin/node && \
-    chmod a+rwx /usr/local/nvm/versions/node/v16.20.2/bin/npm && \
-    # Fix node versions - put into own dir and before conda:
-    mkdir -p /opt/node/bin && \
-    ln -s /usr/local/nvm/versions/node/v16.20.2/bin/node /opt/node/bin/node && \
-    ln -s /usr/local/nvm/versions/node/v16.20.2/bin/npm /opt/node/bin/npm && \
-    # Cleanup
-    clean-layer.sh
-
-ENV PATH=/opt/node/bin:$PATH
 
 # Various configurations
 RUN \
@@ -851,6 +804,12 @@ ENV CONFIG_BACKUP_ENABLED="true" \
     # set number of threads various programs should use, if not-set, it tries to use all
     # this can be problematic since docker restricts CPUs by stil showing all
     MAX_NUM_THREADS="auto"
+
+# By default, the majority of GPU memory will be allocated by the first
+# execution of a TensorFlow graph. While this behavior can be desirable for
+# production pipelines, it is less desirable for interactive use. Set
+# TF_FORCE_GPU_ALLOW_GROWTH to change this default behavior as if the user had
+ENV TF_FORCE_GPU_ALLOW_GROWTH true
 
 ### END CONFIGURATION ###
 
