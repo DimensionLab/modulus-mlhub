@@ -285,6 +285,8 @@ RUN \
     mkdir -p /var/run/sshd && chmod 400 /var/run/sshd && \
     # Install rsyslog for syslog logging
     apt-get install -y --no-install-recommends rsyslog && \
+    # On Debian/Ubuntu systems, you need to install the python3-venv
+    apt-get install -y --no-install-recommends python3.10-venv && \
     pipx install supervisor && \
     pipx inject supervisor supervisor-stdout && \
     # supervisor needs this logging path
@@ -357,7 +359,7 @@ RUN \
     # apt-get install -y python-numpy  && \
     cd ${RESOURCES_PATH} && \
     # Tiger VNC
-    wget -qO- https://github.com/TigerVNC/tigervnc/archive/refs/tags/v1.13.1.tar.gz | tar xz --strip 1 -C / && \
+    wget -qO- https://sourceforge.net/projects/tigervnc/files/stable/1.11.0/tigervnc-1.11.0.x86_64.tar.gz/download | tar xz --strip 1 -C / && \
     # Install websockify
     mkdir -p ./novnc/utils/websockify && \
     # Before updating the noVNC version, we need to make sure that our monkey patching scripts still work!!
