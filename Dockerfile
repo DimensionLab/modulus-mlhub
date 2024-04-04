@@ -179,18 +179,7 @@ RUN \
     chmod -R a+rwx /usr/local/bin/ && \
     # configure dynamic linker run-time bindings
     ldconfig && \
-    # Fix permissions
-    fix-permissions.sh $HOME && \
-    # Cleanup
-    clean-layer.sh
-
-# Add tini
-RUN wget --no-verbose https://github.com/krallin/tini/releases/download/v0.19.0/tini -O /tini && \
-    chmod +x /tini
-
-# prepare ssh for inter-container communication for remote python kernel
-RUN \
-    apt-get update && \
+    # prepare ssh for inter-container communication for remote python kernel
     apt-get install -y --no-install-recommends \
         openssh-client \
         openssh-server \
@@ -202,7 +191,7 @@ RUN \
     chmod go-w $HOME && \
     mkdir -p $HOME/.ssh/ && \
     # create empty config file if not exists
-    touch $HOME/.ssh/config  && \
+    touch $HOME/.ssh/config && \
     sudo chown -R $NB_USER:users $HOME/.ssh && \
     chmod 700 $HOME/.ssh && \
     printenv >> $HOME/.ssh/environment && \
@@ -212,6 +201,9 @@ RUN \
     # Cleanup
     clean-layer.sh
 
+# Add tini
+RUN wget --no-verbose https://github.com/krallin/tini/releases/download/v0.19.0/tini -O /tini && \
+    chmod +x /tini
 
 ### END BASICS ###
 
@@ -233,7 +225,7 @@ RUN git clone https://github.com/pyenv/pyenv.git $RESOURCES_PATH/.pyenv && \
     clean-layer.sh
 
 # Add pyenv to path
-ENV PATH=$RESOURCES_PATH/.pyenv/shims:$RESOURCES_PATH/.pyenv/bin:$PATH \
+ENV PATH=$RESOURCES_PATH/.pyenv/shims:$RESOURCES_PATH/.pyenv/bin:$HOME/.local/bin:$PATH \
     PYENV_ROOT=$RESOURCES_PATH/.pyenv
 
 # Install pipx
@@ -242,8 +234,6 @@ RUN pip install pipx && \
     /usr/bin/python -m pipx ensurepath && \
     # Cleanup
     clean-layer.sh
-
-ENV PATH=$HOME/.local/bin:$PATH
 
 # Node.js is installed (v16.20.2) through NVM (in /usr/local/nvm/versions/node/v16.20.2)
 RUN \
@@ -345,16 +335,7 @@ RUN \
     apt-get purge -y pm-utils xscreensaver* && \
     # Large package: gnome-user-guide 50MB app-install-data 50MB
     apt-get remove -y app-install-data gnome-user-guide && \
-    clean-layer.sh
-
-# Add the defaults from /lib/x86_64-linux-gnu, otherwise lots of no version errors
-# cannot be added above otherwise there are errors in the installation of the gui tools
-# Call order: https://unix.stackexchange.com/questions/367600/what-is-the-order-that-linuxs-dynamic-linker-searches-paths-in
-ENV LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-
-# Install VNC
-RUN \
-    apt-get update  && \
+    # Install VNC
     # required for websockify
     # apt-get install -y python-numpy  && \
     cd ${RESOURCES_PATH} && \
@@ -368,52 +349,24 @@ RUN \
     chmod +x -v ./novnc/utils/*.sh && \
     # create user vnc directory
     mkdir -p $HOME/.vnc && \
-    # Fix permissions
-    fix-permissions.sh ${RESOURCES_PATH} && \
-    # Cleanup
     clean-layer.sh
+
+# Add the defaults from /lib/x86_64-linux-gnu, otherwise lots of no version errors
+# cannot be added above otherwise there are errors in the installation of the gui tools
+# Call order: https://unix.stackexchange.com/questions/367600/what-is-the-order-that-linuxs-dynamic-linker-searches-paths-in
+ENV LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 
 # Install Web Tools - Offered via Jupyter Tooling Plugin
 
 ## VS Code Server: https://github.com/codercom/code-server
-COPY ml-workspace/resources/tools/vs-code-server.sh $RESOURCES_PATH/tools/vs-code-server.sh
+COPY ml-workspace/resources/tools $RESOURCES_PATH/tools
 RUN \
     /bin/bash $RESOURCES_PATH/tools/vs-code-server.sh --install && \
-    # Cleanup
-    clean-layer.sh
-
-## ungit
-COPY ml-workspace/resources/tools/ungit.sh $RESOURCES_PATH/tools/ungit.sh
-RUN \
     /bin/bash $RESOURCES_PATH/tools/ungit.sh --install && \
-    # Cleanup
-    clean-layer.sh
-
-## netdata
-COPY ml-workspace/resources/tools/netdata.sh $RESOURCES_PATH/tools/netdata.sh
-RUN \
     /bin/bash $RESOURCES_PATH/tools/netdata.sh --install && \
-    # Cleanup
-    clean-layer.sh
-
-## Glances webtool is installed in python section below via requirements.txt
-
-## Filebrowser
-COPY ml-workspace/resources/tools/filebrowser.sh $RESOURCES_PATH/tools/filebrowser.sh
-RUN /bin/bash $RESOURCES_PATH/tools/filebrowser.sh --install && \
-    # Cleanup
-    clean-layer.sh
-
-# Install Visual Studio Code
-COPY ml-workspace/resources/tools/vs-code-desktop.sh $RESOURCES_PATH/tools/vs-code-desktop.sh
-RUN /bin/bash $RESOURCES_PATH/tools/vs-code-desktop.sh --install && \
-    # Cleanup
-    clean-layer.sh
-
-# Install Firefox
-
-COPY ml-workspace/resources/tools/firefox.sh $RESOURCES_PATH/tools/firefox.sh
-RUN /bin/bash $RESOURCES_PATH/tools/firefox.sh --install && \
+    /bin/bash $RESOURCES_PATH/tools/filebrowser.sh --install && \
+    /bin/bash $RESOURCES_PATH/tools/vs-code-desktop.sh --install && \
+     /bin/bash $RESOURCES_PATH/tools/firefox.sh --install && \
     # Cleanup
     clean-layer.sh
 
@@ -430,13 +383,11 @@ RUN \
     apt-get update && \
     # upgrade pip
     pip install --upgrade pip && \
+    pip install --no-cache-dir --upgrade --upgrade-strategy only-if-needed scikit-learn==1.3.2 && \
     # Install minimal pip requirements
     pip install --no-cache-dir --upgrade --upgrade-strategy only-if-needed -r ${RESOURCES_PATH}/libraries/requirements-dimensionlab.txt && \
-    # Fix permissions
-    fix-permissions.sh $CONDA_ROOT && \
     # Cleanup
     clean-layer.sh
-
 
 ### END DATA SCIENCE BASICS ###
 
@@ -456,6 +407,7 @@ COPY ml-workspace/resources/jupyter/jupyter_notebook_config.json /etc/jupyter/
 # install jupyter extensions
 RUN \
     # Create empty notebook configuration
+    echo $PATH && \
     mkdir -p $HOME/.jupyter/nbconfig/ && \
     printf "{\"load_extensions\": {}}" > $HOME/.jupyter/nbconfig/notebook.json && \
     # Activate and configure extensions
@@ -464,8 +416,8 @@ RUN \
     jupyter nbextensions_configurator enable --sys-prefix && \
     # Configure nbdime
     nbdime config-git --enable --global && \
-    # Activate Jupytext
-    jupyter nbextension enable --py jupytext --sys-prefix && \
+    # Activate Jupytext (KeyError: 'The Python module jupytext is not a valid nbextension, it is missing the `_jupyter_nbextension_paths()` method.')
+    # jupyter nbextension enable --py jupytext --sys-prefix && \
     # Enable useful extensions
     jupyter nbextension enable skip-traceback/main --sys-prefix && \
     # jupyter nbextension enable comment-uncomment/main && \
@@ -498,12 +450,8 @@ RUN \
     # currently not working jupyter serverextension enable voila --sys-prefix && \
     # Enable ipclusters
     ipcluster nbextension enable && \
-    # Fix permissions? fix-permissions.sh $CONDA_ROOT && \
-    # Cleanup
-    clean-layer.sh
 
-# install jupyterlab
-RUN \
+    # install jupyterlab
     # without es6-promise some extension builds fail
     npm install -g es6-promise && \
     # define alias command for jupyterlab extension installs with log prints to stdout
@@ -511,8 +459,6 @@ RUN \
     lab_ext_install='jupyter labextension install -y --debug-log-path=/dev/stdout --log-level=WARN --minimize=False --no-build' && \
     # jupyterlab installed in requirements section
     $lab_ext_install @jupyter-widgets/jupyterlab-manager && \
-    # Install JupyterLab extensions
-    $lab_ext_install @jupyterlab/toc && \
     # install temporarily from gitrepo due to the issue that jupyterlab_tensorboard does not work with 3.x yet as described here: https://github.com/chaoleili/jupyterlab_tensorboard/issues/28#issuecomment-783594541
     #$lab_ext_install jupyterlab_tensorboard && \
     pip install git+https://github.com/chaoleili/jupyterlab_tensorboard.git && \
@@ -523,7 +469,7 @@ RUN \
     # For Matplotlib: https://github.com/matplotlib/jupyter-matplotlib
     #$lab_ext_install jupyter-matplotlib && \
     # Install jupyterlab language server support
-    && pip install jupyterlab-lsp==3.7.0 jupyter-lsp==1.3.0 && \
+    pip install jupyterlab-lsp==3.7.0 jupyter-lsp==1.3.0 && \
     # $lab_ext_install install @krassowski/jupyterlab-lsp@2.0.8 && \
     # For Plotly
     $lab_ext_install jupyterlab-plotly && \
@@ -541,14 +487,16 @@ RUN \
     # Install jupyterlab code formattor - https://github.com/ryantam626/jupyterlab_code_formatter
     $lab_ext_install @ryantam626/jupyterlab_code_formatter && \
     pip install jupyterlab_code_formatter && \
-    jupyter serverextension enable --py jupyterlab_code_formatter \
+    # Problem (KeyError): 'The Python module jupyterlab_code_formatter does not include any valid server extensions'
+    # jupyter serverextension enable --py jupyterlab_code_formatter && \
     # Final build with minimization
-    && jupyter lab build -y --debug-log-path=/dev/stdout --log-level=WARN && \
+    jupyter lab build -y --debug-log-path=/dev/stdout --log-level=WARN && \
     jupyter lab build && \
     # Cleanup
     # Clean jupyter lab cache: https://github.com/jupyterlab/jupyterlab/issues/4930
     jupyter lab clean && \
     jlpm cache clean && \
+    # Cleanup
     clean-layer.sh
 
 # Install Jupyter Tooling Extension
@@ -659,17 +607,6 @@ COPY ml-workspace/resources/config/90assumeyes /etc/apt/apt.conf.d/
 # Monkey Patching novnc: Styling and added clipboard support. All changed sections are marked with CUSTOM CODE
 COPY ml-workspace/resources/novnc/ $RESOURCES_PATH/novnc/
 
-RUN \
-    ## create index.html to forward automatically to `vnc.html`
-    # Needs to be run after patching
-    ln -s $RESOURCES_PATH/novnc/vnc.html $RESOURCES_PATH/novnc/index.html
-
-# Basic VNC Settings - no password
-ENV \
-    VNC_PW=vncpassword \
-    VNC_RESOLUTION=1600x900 \
-    VNC_COL_DEPTH=24
-
 # Add tensorboard patch - use tensorboard jupyter plugin instead of the actual tensorboard magic
 COPY ml-workspace/resources/jupyter/tensorboard_notebook_patch.py PYTHONPATH/dist-packages/tensorboard/notebook.py
 
@@ -679,7 +616,17 @@ COPY ml-workspace/resources/jupyter/sidebar.jupyterlab-settings $HOME/.jupyter/l
 COPY ml-workspace/resources/jupyter/plugin.jupyterlab-settings $HOME/.jupyter/lab/user-settings/@jupyterlab/extensionmanager-extension/
 COPY ml-workspace/resources/jupyter/ipython_config.py /etc/ipython/ipython_config.py
 
-# Branding of various components
+# Configure netdata
+COPY ml-workspace/resources/netdata/ /etc/netdata/
+COPY ml-workspace/resources/netdata/cloud.conf /var/lib/netdata/cloud.d/cloud.conf
+
+# Create Desktop Icons for Tooling
+COPY ml-workspace/resources/icons $RESOURCES_PATH/icons
+
+# Copy ml-workspace/resources into workspace
+COPY ml-workspace/resources/tools $RESOURCES_PATH/tools
+
+# Various configurations
 RUN \
     # Jupyter Branding
     cp -f $RESOURCES_PATH/branding/logo.png PYTHONPATH"/dist-packages/notebook/static/base/images/logo.png" && \
@@ -690,30 +637,16 @@ RUN \
     cp -f $RESOURCES_PATH/branding/favicon.ico $RESOURCES_PATH"/filebrowser/img/icons/favicon.ico" && \
     cp -f $RESOURCES_PATH/branding/favicon.ico $RESOURCES_PATH"/filebrowser/img/icons/favicon-32x32.png" && \
     cp -f $RESOURCES_PATH/branding/favicon.ico $RESOURCES_PATH"/filebrowser/img/icons/favicon-16x16.png" && \
-    cp -f $RESOURCES_PATH/branding/ml-workspace-logo.svg $RESOURCES_PATH"/filebrowser/img/logo.svg"
-
-# Configure git
-RUN \
+    cp -f $RESOURCES_PATH/branding/ml-workspace-logo.svg $RESOURCES_PATH"/filebrowser/img/logo.svg" && \
+    # Configure git
     git config --global core.fileMode false && \
     git config --global http.sslVerify false && \
     # Use store or credentialstore instead? timout == 365 days validity
-    git config --global credential.helper 'cache --timeout=31540000'
-
-# Configure netdata
-COPY ml-workspace/resources/netdata/ /etc/netdata/
-COPY ml-workspace/resources/netdata/cloud.conf /var/lib/netdata/cloud.d/cloud.conf
-
-# Configure Matplotlib
-RUN \
+    git config --global credential.helper 'cache --timeout=31540000' && \
     # Import matplotlib the first time to build the font cache.
-    MPLBACKEND=Agg /usr/bin/python -c "import matplotlib.pyplot" \
+    MPLBACKEND=Agg /usr/bin/python -c "import matplotlib.pyplot" && \
     # Stop Matplotlib printing junk to the console on first load
-    sed -i "s/^.*Matplotlib is building the font cache using fc-list.*$/# Warning removed/g" PYTHONPATH/dist-packages/matplotlib/font_manager.py
-
-# Create Desktop Icons for Tooling
-COPY ml-workspace/resources/icons $RESOURCES_PATH/icons
-
-RUN \
+    sed -i "s/^.*Matplotlib is building the font cache using fc-list.*$/# Warning removed/g" PYTHONPATH/dist-packages/matplotlib/font_manager.py && \
     # ungit:
     echo "[Desktop Entry]\nVersion=1.0\nType=Link\nName=Ungit\nComment=Git Client\nCategories=Development;\nIcon=/resources/icons/ungit-icon.png\nURL=http://localhost:8092/tools/ungit" > /usr/share/applications/ungit.desktop && \
     chmod +x /usr/share/applications/ungit.desktop && \
@@ -725,19 +658,10 @@ RUN \
     chmod +x /usr/share/applications/glances.desktop && \
     # Remove mail and logout desktop icons
     rm /usr/share/applications/xfce4-mail-reader.desktop && \
-    rm /usr/share/applications/xfce4-session-logout.desktop
-
-# Copy ml-workspace/resources into workspace
-COPY ml-workspace/resources/tools $RESOURCES_PATH/tools
-COPY ml-workspace/resources/tests $RESOURCES_PATH/tests
-COPY ml-workspace/resources/tutorials $RESOURCES_PATH/tutorials
-COPY ml-workspace/resources/licenses $RESOURCES_PATH/licenses
-COPY ml-workspace/resources/reports $RESOURCES_PATH/reports
-
-
-# Various configurations
-RUN \
-    touch $HOME/.ssh/config && \
+    rm /usr/share/applications/xfce4-session-logout.desktop && \
+    ## create index.html to forward automatically to `vnc.html`
+    # Needs to be run after patching
+    ln -s $RESOURCES_PATH/novnc/vnc.html $RESOURCES_PATH/novnc/index.html && \
     # clear chome init file - not needed since we load settings manually
     chmod -R a+rwx $WORKSPACE_HOME && \
     chmod -R a+rwx $RESOURCES_PATH && \
@@ -753,6 +677,7 @@ RUN \
     # TODO: does 1777 work fine? chmod a+rwx /tmp && \
     # Set /workspace as default directory to navigate to as root user
     echo 'cd '$WORKSPACE_HOME >> $HOME/.bashrc
+
 
 # MKL and Hardware Optimization
 # Fix problem with MKL with duplicated libiomp5: https://github.com/dmlc/xgboost/issues/1715
@@ -780,15 +705,18 @@ ENV KMP_DUPLICATE_LIB_OK="True" \
     # TODO: https://github.com/pytorch/pytorch/issues/37377
     # use omp
     MKL_THREADING_LAYER=GNU \
+    # Basic VNC Settings - no password
+    VNC_PW=vncpassword \
+    VNC_RESOLUTION=1600x900 \
+    VNC_COL_DEPTH=24 \
     # To avoid over-subscription when using TBB, let the TBB schedulers use Inter Process Communication to coordinate:
     ENABLE_IPC=1 \
     # will cause pretty_errors to check if it is running in an interactive terminal
     PYTHON_PRETTY_ERRORS_ISATTY_ONLY=1 \
     # TODO: evaluate - Deactivate hdf5 file locking
-    HDF5_USE_FILE_LOCKING=False
-
-# Set default values for environment variables
-ENV CONFIG_BACKUP_ENABLED="true" \
+    HDF5_USE_FILE_LOCKING=False \
+    # Set default values for environment variables
+    CONFIG_BACKUP_ENABLED="true" \
     SHUTDOWN_INACTIVE_KERNELS="false" \
     SHARED_LINKS_ENABLED="true" \
     AUTHENTICATE_VIA_JUPYTER="false" \
@@ -805,13 +733,12 @@ ENV CONFIG_BACKUP_ENABLED="true" \
     # LS_COLORS="" \
     # set number of threads various programs should use, if not-set, it tries to use all
     # this can be problematic since docker restricts CPUs by stil showing all
-    MAX_NUM_THREADS="auto"
-
-# By default, the majority of GPU memory will be allocated by the first
-# execution of a TensorFlow graph. While this behavior can be desirable for
-# production pipelines, it is less desirable for interactive use. Set
-# TF_FORCE_GPU_ALLOW_GROWTH to change this default behavior as if the user had
-ENV TF_FORCE_GPU_ALLOW_GROWTH true
+    MAX_NUM_THREADS="auto" \
+    # By default, the majority of GPU memory will be allocated by the first
+    # execution of a TensorFlow graph. While this behavior can be desirable for
+    # production pipelines, it is less desirable for interactive use. Set
+    # TF_FORCE_GPU_ALLOW_GROWTH to change this default behavior as if the user had
+    TF_FORCE_GPU_ALLOW_GROWTH="true"
 
 ### END CONFIGURATION ###
 

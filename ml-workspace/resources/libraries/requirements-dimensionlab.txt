@@ -3,10 +3,12 @@
 ## Basics
 urllib3==1.26.6 # HTTP library with thread-safe connection pooling, file post, and more.
 python-crontab==3.0.0 # Python Crontab API
+yarl==1.5.* # Yet another URL library
 
 ## Utilities
 torchviz==0.0.2
 colorama==0.4.4 # Cross-platform colored terminal text.
+jinja2==3.0.3 # A very fast and expressive template engine.
 
 # Development Helper
 virtualenv==20.25.1 # Virtual Python Environment builder
@@ -22,15 +24,14 @@ glances==3.1.7 # A cross-platform curses-based monitoring tool
 pymdstat==0.4.2 # Python library to parse Linux /proc/mdstat
 
 ## Jupyter
-# Via conda: ipython notebook jupyterlab
+jupyterlab==3.0.*
 jupyter-console==6.6.3
 jupyter-kernel-gateway==2.5.0
-jupyter-server==1.9.0
-jupyter-server-proxy==3.0.2
-jupyter-resource-usage==1.0.2 # Simple Jupyter extension to show how much resources (RAM) your notebook is using
+ipyparallel==6.3.0 # Interactive Parallel Computing in Python
 ipympl==0.7.0 # Matplotlib Jupyter Extension
 jupyterhub==1.4.1 # JupyterHub: A multi-user server for Jupyter notebooks
 remote_ikernel==0.4.6 # Running IPython kernels through batch queues
+nbconvert==5.6.* # Converting Jupyter Notebooks
 jupyter_contrib_nbextensions==0.5.1 # A collection of Jupyter nbextensions.
 jupyter_nbextensions_configurator==0.4.1 # jupyter serverextension providing configuration interfaces for nbextensions.
 # TODO: jupyter-tensorboard version has a bug and hence does not support tensorboard 2.3 - 2.4 currently -> installed later
