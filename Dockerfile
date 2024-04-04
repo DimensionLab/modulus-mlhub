@@ -210,19 +210,20 @@ RUN apt-get update && \
 
 # Install tiny-cuda-nn
 ENV TCNN_CUDA_ARCHITECTURES="60;70;75;80;86;90"
-RUN pip install --no-cache-dir git+https://github.com/NVlabs/tiny-cuda-nn/@master#subdirectory=bindings/torch
 
 # Build and install pysdf
 COPY --from=builder /external /external
-COPY --from=builder /usr/local/lib/python3.10/dist-packages/pysdf /usr/local/lib/python3.8/dist-packages/pysdf
-COPY --from=builder /usr/local/lib/python3.10/dist-packages/pysdf-0.1.dist-info /usr/local/lib/python3.8/dist-packages/pysdf-0.1.dist-info
+COPY --from=builder /usr/local/lib/python3.10/dist-packages/pysdf /opt/conda/lib/python3.8/site-packages/pysdf
+COPY --from=builder /usr/local/lib/python3.10/dist-packages/pysdf-0.1.dist-info /opt/conda/lib/python3.8/site-packages/pysdf-0.1.dist-info
+# Tinycudann
+COPY --from=builder /usr/local/lib/python3.10/dist-packages/tinycudann /opt/conda/lib/python3.8/site-packages/tinycudann
+COPY --from=builder /usr/local/lib/python3.10/dist-packages/tinycudann-1.7.dist-info /opt/conda/lib/python3.8/site-packages/tinycudann-1.7.dist-info
+COPY --from=builder /usr/local/lib/python3.10/dist-packages/tinycudann_bindings /opt/conda/lib/python3.8/site-packages/tinycudann_bindings
 
 # Install Modulus
-RUN pip install --upgrade --no-cache-dir git+https://github.com/NVIDIA/modulus.git && \
-p   ip install --no-cache-dir "black==22.10.0" "interrogate==1.5.0" "coverage==6.5.0" && \
-    ls /usr/local/lib/python3.8/dist-packages && \
-    nvidia-smi
-
+RUN pip install --upgrade --no-cache-dir git+https://github.com/NVIDIA/modulus-sym.git && \
+    # Cleanup
+    clean-layer.sh
 
 ENV LD_LIBRARY_PATH=/external/lib:${LD_LIBRARY_PATH}:/usr/local/cuda/extras/CUPTI/lib64 \
     NVIDIA_DRIVER_CAPABILITIES=graphics,compute,utility,video \
@@ -233,6 +234,7 @@ ENV LD_LIBRARY_PATH=/external/lib:${LD_LIBRARY_PATH}:/usr/local/cuda/extras/CUPT
 # install jupyterlab extensions for HW / GPU monitoring
 RUN apt-get update && \
     pip install jupyterlab_nvdashboard && \
+    # Cleanup
     clean-layer.sh
 
 # Install Paraview
@@ -294,6 +296,8 @@ RUN \
     cp -f $RESOURCES_PATH/branding/favicon.ico $RESOURCES_PATH"/filebrowser/img/icons/favicon-32x32.png" && \
     cp -f $RESOURCES_PATH/branding/favicon.ico $RESOURCES_PATH"/filebrowser/img/icons/favicon-16x16.png" && \
     cp -f $RESOURCES_PATH/branding/ml-workspace-logo.svg $RESOURCES_PATH"/filebrowser/img/logo.svg"
+
+ENV TF_FORCE_GPU_ALLOW_GROWTH true
 
 # Overwrites env var from ml-workspace
 ENV INCLUDE_TUTORIALS=false
