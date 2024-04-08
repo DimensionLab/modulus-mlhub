@@ -189,6 +189,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ### END CUDANN9 ###
 
+### GUI TOOLS ###
+
+# Install Paraview
+COPY ml-workspace/resources/tools/paraview.sh $RESOURCES_PATH/tools/paraview.sh
+RUN \
+    /bin/bash $RESOURCES_PATH/tools/paraview.sh --install && \
+    # Cleanup
+    clean-layer.sh
+
+### END GUI TOOLS ###
+
 # ### NVIDIA MODULUS ###
 
 # Update pip and setuptools
@@ -213,8 +224,10 @@ ENV TCNN_CUDA_ARCHITECTURES="60;70;75;80;86;90"
 
 # Build and install pysdf
 COPY --from=builder /external /external
-COPY --from=builder /usr/local/lib/python3.10/dist-packages/pysdf /opt/conda/lib/python3.8/site-packages/pysdf
-COPY --from=builder /usr/local/lib/python3.10/dist-packages/pysdf-0.1.dist-info /opt/conda/lib/python3.8/site-packages/pysdf-0.1.dist-info
+COPY libpysdf.so /external/lib/libpysdf.so
+COPY libsdf.so /external/lib/libsdf.so
+# COPY --from=builder /usr/local/lib/python3.10/dist-packages/pysdf /opt/conda/lib/python3.8/site-packages/pysdf
+# COPY --from=builder /usr/local/lib/python3.10/dist-packages/pysdf-0.1.dist-info /opt/conda/lib/python3.8/site-packages/pysdf-0.1.dist-info
 # Tinycudann
 COPY --from=builder /usr/local/lib/python3.10/dist-packages/tinycudann /opt/conda/lib/python3.8/site-packages/tinycudann
 COPY --from=builder /usr/local/lib/python3.10/dist-packages/tinycudann-1.7.dist-info /opt/conda/lib/python3.8/site-packages/tinycudann-1.7.dist-info
@@ -237,16 +250,63 @@ RUN apt-get update && \
     # Cleanup
     clean-layer.sh
 
-# Install Paraview
-COPY ml-workspace/resources/tools/paraview.sh $RESOURCES_PATH/tools/paraview.sh
-RUN \
-    /bin/bash $RESOURCES_PATH/tools/paraview.sh --install && \
-    # Cleanup
-    clean-layer.sh
-
 ENV PYTHONPATH ${RESOURCES_PATH}/paraview_build/lib:$RESOURCES_PATH/paraview_build/lib/python3.8/site-packages
 ENV LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:$RESOURCES_PATH/paraview_build/lib
 ENV PATH ${PATH}:${RESOURCES_PATH}/paraview_build/bin
+
+### Install python libs
+COPY ml-workspace/resources/libraries/requirements-dimensionlab.txt $RESOURCES_PATH/libraries/requirements-dimensionlab.txt
+RUN \
+    apt-get update && \
+    apt-get install -y libomp-dev libopenblas-base && \
+    # upgrade pip
+    pip install --upgrade pip && \
+    pip install --no-cache-dir --upgrade --upgrade-strategy only-if-needed scikit-learn==1.3.2 && \
+    # Install minimal pip requirements
+    pip install --no-cache-dir --upgrade --upgrade-strategy only-if-needed -r ${RESOURCES_PATH}/libraries/requirements-dimensionlab.txt && \
+    # Cleanup
+    clean-layer.sh
+
+# Fix pysdf
+COPY pysdf-0.1-py3.8-linux-x86_64.egg /external/eggs/pysdf-0.1-py3.8-linux-x86_64.egg
+RUN pip install setuptools==42.0.0 && \
+    cd /external/eggs/ && \
+    python -m easy_install pysdf-0.1-py3.8-linux-x86_64.egg && \
+    # back to previous version
+    pip install setuptools==65.3.0 && \
+    # Cleanup
+    clean-layer.sh
+
+# Install bison
+# RUN apt-get update && \
+#     cd $HOME && \
+#     wget https://ftp.gnu.org/gnu/bison/bison-3.2.tar.gz && \
+#     tar xf bison-3.2.tar.gz && \
+#     cd bison-3.2 && \
+#     ./configure --prefix=$HOME/bison-install && \
+#     make && \
+#     make install && \
+#     # Cleanup
+#     clean-layer.sh
+
+# # Add bison installed path to PATH
+# ENV PATH=$HOME/bison-install/bin:$PATH
+
+# Fix glibc -> move to version 2.34
+# RUN apt-get update && \
+#     mkdir $HOME/glibc/ && cd $HOME/glibc && \
+#     wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz && \
+#     tar -xvzf glibc-2.34.tar.gz && \
+#     mkdir build && \
+#     mkdir glibc-2.34-install && \
+#     cd build && \
+#     ~/glibc/glibc-2.34/configure --prefix=$HOME/glibc/glibc-2.34-install && \
+#     make && \
+#     make install && \
+#     # Cleanup
+#     clean-layer.sh
+
+# ENV PATH=$HOME/glibc/build:$PATH
 
 # RUN conda create -n paraview python==3.8 -y
 
@@ -283,6 +343,9 @@ RUN \
 
 # Create Desktop Icons for Tooling
 COPY ml-workspace/resources/branding $RESOURCES_PATH/branding
+
+# Patch Modulus Sym vtk util
+COPY patches/vtk.py /opt/conda/lib/python3.8/site-packages/modulus/sym/utils/io/vtk.py
 
 # Branding of various components
 RUN \

@@ -3,12 +3,15 @@
 ## Basics
 urllib3==1.26.6 # HTTP library with thread-safe connection pooling, file post, and more.
 python-crontab==3.0.0 # Python Crontab API
-yarl==1.5.* # Yet another URL library
+yarl==1.5.1 # Yet another URL library, need this specific version
+protobuf==3.20.3 # Protocol Buffers - Google's data interchange format, need this specific version
+
 
 ## Utilities
 torchviz==0.0.2
 colorama==0.4.4 # Cross-platform colored terminal text.
 jinja2==3.0.3 # A very fast and expressive template engine.
+traitlets==5.9.0 # Traitlets Python config system
 
 # Development Helper
 virtualenv==20.25.1 # Virtual Python Environment builder
