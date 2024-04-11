@@ -340,6 +340,9 @@ RUN \
     fix-permissions.sh $CONDA_ROOT && \
     clean-layer.sh
 
+# Fix permissions for Paraview
+RUN cd $HOME/Desktop/Tools && \
+    chmod u+x paraview.sh
 
 # Create Desktop Icons for Tooling
 COPY ml-workspace/resources/branding $RESOURCES_PATH/branding
