@@ -5,13 +5,16 @@ urllib3==1.26.6 # HTTP library with thread-safe connection pooling, file post, a
 python-crontab==3.0.0 # Python Crontab API
 yarl==1.5.1 # Yet another URL library, need this specific version
 protobuf==3.20.3 # Protocol Buffers - Google's data interchange format, need this specific version
-
+scipy==1.10.1 # Scientific Library for Python
 
 ## Utilities
 torchviz==0.0.2
 colorama==0.4.4 # Cross-platform colored terminal text.
 jinja2==3.0.3 # A very fast and expressive template engine.
 traitlets==5.9.0 # Traitlets Python config system
+pyvista==0.43.5 # 3D plotting and mesh analysis through a streamlined interface for the Visualization Toolkit (VTK)
+gdown==5.1.0 # Google Drive direct download of big files.
+warp-lang==1.0.2 # A Python framework for high-performance simulation and graphics programming
 
 # Development Helper
 virtualenv==20.25.1 # Virtual Python Environment builder
