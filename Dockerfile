@@ -264,6 +264,9 @@ RUN \
     pip install --no-cache-dir --upgrade --upgrade-strategy only-if-needed scikit-learn==1.3.2 && \
     # Install minimal pip requirements
     pip install --no-cache-dir --upgrade --upgrade-strategy only-if-needed -r ${RESOURCES_PATH}/libraries/requirements-dimensionlab.txt && \
+    cd $HOME && git clone https://github.com/NVIDIA/apex && cd apex && \
+    # For performance and full functionality, we recommend installing Apex with CUDA and C++ extensions via
+    pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --global-option="--cpp_ext" --global-option="--cuda_ext" ./ && \
     # Cleanup
     clean-layer.sh
 
