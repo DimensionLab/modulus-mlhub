@@ -6,6 +6,7 @@ python-crontab==3.0.0 # Python Crontab API
 yarl==1.5.1 # Yet another URL library, need this specific version
 protobuf==3.20.3 # Protocol Buffers - Google's data interchange format, need this specific version
 scipy==1.10.1 # Scientific Library for Python
+numpy==1.24.4 # NumPy is the fundamental package for scientific computing with Python
 
 ## Utilities
 torchviz==0.0.2
